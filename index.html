@@ -5002,7 +5002,7 @@ let intentionDraftTags = [];
 
 function intentionTagsHTML() {
   const pills = intentionDraftTags.map((t, i) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:rgba(237,230,216,0.06);border:0.5px solid rgba(237,230,216,0.14);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
       ${escapeHtml(t)}<button onclick="intentionRemoveTag(${i})" type="button" style="background:none;border:none;color:var(--ink-faint);font-size:13px;line-height:1;cursor:pointer;padding:0 0 0 2px;">×</button>
     </span>`
   ).join('');
@@ -5010,7 +5010,7 @@ function intentionTagsHTML() {
     ${pills}
     <button onclick="intentionShowTagInput()" type="button" style="padding:3px 9px;background:transparent;border:0.5px dashed rgba(237,230,216,0.2);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-faint);cursor:pointer;">+ tag</button>
     <input id="intention-tag-input" type="text" placeholder="tag this intention…"
-      style="display:none;width:100%;padding:7px 11px;margin-top:5px;background:rgba(237,230,216,0.04);border:0.5px solid rgba(237,230,216,0.12);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
+      style="display:none;width:100%;padding:7px 11px;margin-top:5px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
       onkeydown="if(event.key==='Enter'){event.preventDefault();intentionConfirmTag();}"
       oninput="this.value=this.value.replace(/[^a-zA-Z0-9\\-_ ]/g,'')">
   </div>`;
@@ -5783,7 +5783,7 @@ let captureDraftTags = [];
 
 function captureTagsHTML() {
   const pills = captureDraftTags.map((t, i) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(237,230,216,0.06);border:0.5px solid rgba(237,230,216,0.14);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
       ${escapeHtml(t)}<button onclick="captureRemoveTag(${i})" style="background:none;border:none;color:var(--ink-faint);font-size:13px;line-height:1;cursor:pointer;padding:0 0 0 2px;">×</button>
     </span>`
   ).join('');
@@ -5795,7 +5795,7 @@ function captureTagsHTML() {
         <button onclick="captureShowTagInput()" style="padding:4px 10px;background:transparent;border:0.5px dashed rgba(237,230,216,0.2);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-faint);cursor:pointer;">+ tag</button>
       </div>
       <input id="capture-tag-input" type="text" placeholder="type a tag, press enter…"
-        style="display:none;width:100%;padding:9px 12px;background:rgba(237,230,216,0.04);border:0.5px solid rgba(237,230,216,0.12);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
+        style="display:none;width:100%;padding:9px 12px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
         onkeydown="if(event.key==='Enter'){event.preventDefault();captureConfirmTag();}"
         oninput="this.value=this.value.replace(/[^a-zA-Z0-9\\-_ ]/g,'')">
     </div>`;
@@ -6384,7 +6384,7 @@ let touchDraftTags = [];
 
 function touchTagsHTML() {
   const pills = touchDraftTags.map((t, i) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:rgba(237,230,216,0.06);border:0.5px solid rgba(237,230,216,0.14);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
       ${escapeHtml(t)}<button onclick="touchRemoveTag(${i})" style="background:none;border:none;color:var(--ink-faint);font-size:13px;line-height:1;cursor:pointer;padding:0 0 0 2px;" type="button">×</button>
     </span>`
   ).join('');
@@ -6395,7 +6395,7 @@ function touchTagsHTML() {
         <button onclick="touchShowTagInput()" type="button" style="padding:3px 9px;background:transparent;border:0.5px dashed rgba(237,230,216,0.2);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-faint);cursor:pointer;">+ tag</button>
       </div>
       <input id="touch-tag-input" type="text" placeholder="tag this moment…"
-        style="display:none;width:100%;padding:8px 12px;background:rgba(237,230,216,0.04);border:0.5px solid rgba(237,230,216,0.12);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
+        style="display:none;width:100%;padding:8px 12px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
         onkeydown="if(event.key==='Enter'){event.preventDefault();touchConfirmTag();}"
         oninput="this.value=this.value.replace(/[^a-zA-Z0-9\\-_ ]/g,'')">
     </div>`;
@@ -7049,7 +7049,7 @@ function examenClosing() {
   // v3.2.1: tag UI instead of #themes extraction
   if (!Array.isArray(examenDraft.tags)) examenDraft.tags = [];
   const tagPills = examenDraft.tags.map((t, i) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(237,230,216,0.06);border:0.5px solid rgba(237,230,216,0.14);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
       ${escapeHtml(t)}<button onclick="examenRemoveTag(${i})" style="background:none;border:none;color:var(--ink-faint);font-size:13px;line-height:1;cursor:pointer;padding:0 0 0 2px;">×</button>
     </span>`
   ).join('');
@@ -7058,10 +7058,10 @@ function examenClosing() {
       <div style="font-family:'Inter',sans-serif;font-size:8.5px;letter-spacing:0.14em;color:var(--ink-faint);font-weight:500;margin-bottom:8px;">TAG THIS EVENING</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px;">
         ${tagPills}
-        <button onclick="examenAddTagPrompt()" style="padding:4px 10px;background:transparent;border:0.5px dashed rgba(237,230,216,0.2);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-faint);cursor:pointer;">+ add</button>
+        <button onclick="examenAddTagPrompt()" style="padding:4px 10px;background:transparent;border:0.5px dashed var(--line-strong);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);cursor:pointer;">+ add</button>
       </div>
       <input id="examen-tag-input" type="text" placeholder="a word for tonight…"
-        style="display:none;width:100%;padding:9px 12px;background:rgba(237,230,216,0.04);border:0.5px solid rgba(237,230,216,0.12);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
+        style="display:none;width:100%;padding:9px 12px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
         onkeydown="if(event.key==='Enter'){event.preventDefault();examenConfirmTag();}"
         oninput="this.value=this.value.replace(/[^a-zA-Z0-9\\-_ ]/g,'')">
     </div>`;
@@ -7120,7 +7120,7 @@ function examenTagsWrapHTML() {
   if (!examenDraft) return '';
   if (!Array.isArray(examenDraft.tags)) examenDraft.tags = [];
   const pills = examenDraft.tags.map((t, i) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(237,230,216,0.06);border:0.5px solid rgba(237,230,216,0.14);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
       ${escapeHtml(t)}<button onclick="examenRemoveTag(${i})" style="background:none;border:none;color:var(--ink-faint);font-size:13px;line-height:1;cursor:pointer;padding:0 0 0 2px;">×</button>
     </span>`
   ).join('');
@@ -7128,10 +7128,10 @@ function examenTagsWrapHTML() {
     <div style="font-family:'Inter',sans-serif;font-size:8.5px;letter-spacing:0.14em;color:var(--ink-faint);font-weight:500;margin-bottom:8px;">TAG THIS EVENING</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px;">
       ${pills}
-      <button onclick="examenAddTagPrompt()" style="padding:4px 10px;background:transparent;border:0.5px dashed rgba(237,230,216,0.2);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-faint);cursor:pointer;">+ add</button>
+      <button onclick="examenAddTagPrompt()" style="padding:4px 10px;background:transparent;border:0.5px dashed var(--line-strong);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);cursor:pointer;">+ add</button>
     </div>
     <input id="examen-tag-input" type="text" placeholder="a word for tonight…"
-      style="display:none;width:100%;padding:9px 12px;background:rgba(237,230,216,0.04);border:0.5px solid rgba(237,230,216,0.12);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
+      style="display:none;width:100%;padding:9px 12px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
       onkeydown="if(event.key==='Enter'){event.preventDefault();examenConfirmTag();}"
       oninput="this.value=this.value.replace(/[^a-zA-Z0-9\\-_ ]/g,'')">`;
 }
@@ -7886,7 +7886,7 @@ let pauseDraftTags = [];
 
 function pauseTagsHTML(inputId) {
   const pills = pauseDraftTags.map((t, i) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:rgba(237,230,216,0.06);border:0.5px solid rgba(237,230,216,0.14);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-muted);">
       ${escapeHtml(t)}<button onclick="pauseRemoveTag(${i})" type="button" style="background:none;border:none;color:var(--ink-faint);font-size:13px;line-height:1;cursor:pointer;padding:0 0 0 2px;">×</button>
     </span>`
   ).join('');
@@ -7897,7 +7897,7 @@ function pauseTagsHTML(inputId) {
       <button onclick="pauseShowTagInput()" type="button" style="padding:3px 9px;background:transparent;border:0.5px dashed rgba(237,230,216,0.2);border-radius:999px;font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-faint);cursor:pointer;">+ tag</button>
     </div>
     <input id="pause-tag-input" type="text" placeholder="a word for this week…"
-      style="display:none;width:100%;padding:8px 11px;background:rgba(237,230,216,0.04);border:0.5px solid rgba(237,230,216,0.12);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
+      style="display:none;width:100%;padding:8px 11px;background:var(--surface-2);border:0.5px solid var(--line);border-radius:10px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink);box-sizing:border-box;"
       onkeydown="if(event.key==='Enter'){event.preventDefault();pauseConfirmTag();}"
       oninput="this.value=this.value.replace(/[^a-zA-Z0-9\\-_ ]/g,'')">
   </div>`;
@@ -9087,9 +9087,15 @@ function themeTallies() {
     if (ts < start) return;
     tagsFor(p).forEach(t => { tally[t] = (tally[t] || 0) + 1; });
   });
+  // v3.3.8: deduplicate linked touches (multi-person fan-out creates copies)
+  // Only count a touch once per unique touch id
+  const _seenTouchIds = new Set();
   (state.people || []).forEach(person => {
     (person.touches || []).forEach(touch => {
       if (new Date(touch.ts).getTime() < start) return;
+      const touchId = touch.id || (touch.ts + touch.note);
+      if (_seenTouchIds.has(touchId)) return;
+      _seenTouchIds.add(touchId);
       tagsFor(touch).forEach(t => { tally[t] = (tally[t] || 0) + 1; });
     });
   });
@@ -9465,7 +9471,16 @@ function reviewStatsRow() {
   };
   const workouts = state.workouts.filter(w => inRange(w.ts || w.started_at)).length;
   const examens = state.examens.filter(e => new Date(e.date_iso).getTime() >= start && !e.skipped_entirely).length;
-  const sleepNights = state.sleep.filter(s => new Date(s.date).getTime() >= start).length;
+  // v3.3.8: count all sleep sources (Whoop + manual) via sleepHoursForDate
+  const sleepNights = (() => {
+    const sd = new Date(start); let n = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sd); d.setDate(sd.getDate() + i);
+      if (d > new Date()) break;
+      if (sleepHoursForDate(d.toISOString().slice(0,10)) > 0) n++;
+    }
+    return n;
+  })();
   const touches = state.people.reduce((a, p) => a + (p.touches || []).filter(t => inRange(t.ts)).length, 0);
   return `
     <div class="week-stats-row">
@@ -9537,7 +9552,18 @@ function weekSparklineTilesHTML() {
   // Aggregate counts
   const workouts = state.workouts.filter(w => inRange(w.ts || w.started_at)).length;
   const examens = state.examens.filter(e => new Date(e.date_iso).getTime() >= start && !e.skipped_entirely).length;
-  const sleepEntries = state.sleep.filter(s => new Date(s.date).getTime() >= start);
+  // v3.3.8: use sleepHoursForDate to include Whoop and all providers
+  const sleepEntries = (() => {
+    const sd = new Date(start); const out = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sd); d.setDate(sd.getDate() + i);
+      if (d > new Date()) break;
+      const iso = d.toISOString().slice(0,10);
+      const h = sleepHoursForDate(iso);
+      if (h > 0) out.push({ iso, duration_h: h });
+    }
+    return out;
+  })();
   const sleepCount = sleepEntries.length;
   const sleepAvg = sleepCount >= 3
     ? (sleepEntries.reduce((a, s) => a + (s.duration_h || 0), 0) / sleepCount)
@@ -12877,9 +12903,9 @@ function weekHabitsSectionHTML() {
 // Reuses the existing 28-day cadence-aware grids + observation prose from lifeHabitsHTML.
 // Slimmed: no header dup, lives as a section among others.
 function monthHabitsSectionHTML() {
+  // v3.3.9: active habits only — retired never shown in Month
   const habits = activeHabits();
-  const retiredInWindow = (state.habits || []).filter(h => h.retired_at && (Date.now() - new Date(h.retired_at).getTime()) < HABITS_VIEW_DAYS * 86400000);
-  if (!habits.length && !retiredInWindow.length) return '';
+  if (!habits.length) return '';
 
   const habitCardHTML = (h, isRetired) => {
     const grid =
@@ -12922,17 +12948,11 @@ function monthHabitsSectionHTML() {
   };
 
   const activeBlock = habits.map(h => habitCardHTML(h, false)).join('<div style="height:0.5px;background:var(--line);margin:0;"></div>');
-  const retiredBlock = retiredInWindow.length ? `
-    <div style="height:0.5px;background:var(--line);margin:18px 0;"></div>
-    <div style="font-size:9.5px;letter-spacing:0.16em;color:var(--ink-faint);font-weight:500;margin-bottom:4px;font-family:'Inter',sans-serif;">RETIRED · ${retiredInWindow.length}</div>
-    ${retiredInWindow.map(h => habitCardHTML(h, true)).join('<div style="height:0.5px;background:var(--line);margin:0;"></div>')}
-  ` : '';
 
   return `
     <div class="pulse-card" style="margin-top:8px;padding:14px 14px 14px;">
       <div style="font-size:9.5px;letter-spacing:0.16em;color:var(--ink-muted);font-weight:500;margin-bottom:4px;">WHAT YOU EMBODIED</div>
       ${activeBlock}
-      ${retiredBlock}
       <button onclick="openHabitCreateSheet()" style="display:flex;align-items:center;justify-content:center;width:100%;padding:11px;background:transparent;border:0.5px dashed var(--brass-dim);border-radius:10px;color:var(--brass);font-family:inherit;font-size:12px;cursor:pointer;margin-top:16px;letter-spacing:0.02em;font-weight:500;">+ Name a practice</button>
     </div>
   `;
@@ -12941,9 +12961,9 @@ function monthHabitsSectionHTML() {
 // Habits section for the YEAR segment.
 // 12-month strip per habit, density-shaded by completion ratio of that month.
 function yearHabitsSectionHTML() {
+  // v3.3.9: active habits only — retired never shown in Year
   const habits = activeHabits();
-  const retired = (state.habits || []).filter(h => h.retired_at);
-  if (!habits.length && !retired.length) return '';
+  if (!habits.length) return '';
 
   // Compute the last 12 months as anchor dates (start of each month).
   const today = new Date(todayISO() + 'T12:00:00');
@@ -13066,17 +13086,11 @@ function yearHabitsSectionHTML() {
   };
 
   const activeBlock = habits.map(h => habitRowHTML(h, false)).join('<div style="height:0.5px;background:var(--line);margin:0;"></div>');
-  const retiredBlock = retired.length ? `
-    <div style="height:0.5px;background:var(--line);margin:14px 0;"></div>
-    <div style="font-size:9.5px;letter-spacing:0.16em;color:var(--ink-faint);font-weight:500;margin-bottom:4px;font-family:'Inter',sans-serif;">RETIRED · ${retired.length}</div>
-    ${retired.map(h => habitRowHTML(h, true)).join('<div style="height:0.5px;background:var(--line);margin:0;"></div>')}
-  ` : '';
 
   return `
     <div class="pulse-card" style="margin-top:8px;padding:14px 14px 12px;">
       <div style="font-size:9.5px;letter-spacing:0.16em;color:var(--ink-muted);font-weight:500;margin-bottom:4px;">PRACTICES THROUGH THE YEAR</div>
       ${activeBlock}
-      ${retiredBlock}
     </div>
   `;
 }
@@ -13183,7 +13197,7 @@ function renderMe() {
   const footer = `
     <div style="height:0.5px;background:var(--line);margin:24px 0 18px;"></div>
     <div style="text-align:center;padding:8px 0 32px;">
-      <div style="font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink-muted);">Kuzuri · v3.3.7</div>
+      <div style="font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink-muted);">Kuzuri · v3.3.9</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-faint);margin-top:4px;">a record of becoming</div>
     </div>
   `;
@@ -13291,7 +13305,7 @@ function openKuzuriOnboarding() {
     {
       kicker: 'Kuzuri',
       head: 'A quiet practice<br>of becoming.',
-      body: 'Not a tracker. Not a score.<br>A place to pay attention to your life.',
+      body: 'Not a tracker. Not a score. A place to pay attention to your life.',
       extra: `
         <div style="border-left:2px solid var(--brass);padding:8px 0 8px 13px;margin-bottom:14px;">
           <div style="font-family:'Fraunces',serif;font-style:italic;font-size:12px;color:var(--ink);font-weight:300;line-height:1.5;">"The unexamined life is not worth living."</div>
@@ -16575,21 +16589,16 @@ window.kuzuriOnboarding = (() => {
       </div>
     `;
 
-    // Oura card (only if configured server-side)
-    if (ouraConfigured) {
-      html += `
-        <div class="connection-card${ouraConnected ? ' connected' : ''}">
-          <div class="connection-card-info">
-            <div class="connection-card-name">Oura</div>
-            <div class="connection-card-desc">Sleep, readiness</div>
-          </div>
-          ${ouraConnected
-            ? `<button class="connection-card-action connected" disabled>Connected</button>`
-            : `<button class="connection-card-action primary" onclick="kuzuriOnboarding.connectOura()">Connect</button>`
-          }
+    // v3.3.8: Oura → Soon (not yet built)
+    html += `
+      <div class="connection-card">
+        <div class="connection-card-info">
+          <div class="connection-card-name">Oura</div>
+          <div class="connection-card-desc">Sleep, readiness</div>
         </div>
-      `;
-    }
+        <button class="connection-card-action disabled" disabled>Soon</button>
+      </div>
+    `;
 
     // Garmin card (always visible, always "soon")
     html += `

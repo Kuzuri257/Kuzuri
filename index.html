@@ -4007,6 +4007,12 @@ const DEFAULT_STATE = {
     workouts: [],
     body: null,               // {height_meter, weight_kilogram, max_heart_rate}
   },
+  oura: {                     // v3.4.0 — cached Oura data
+    connected: false,
+    last_synced_at: null,
+    sleep: [],                // [{day, duration_h, bedtime_start, bedtime_end, efficiency, source}]
+    readiness: [],            // [{day, score, hrv, resting_hr, source}]
+  },
   nav: { active: 'today' },
   workouts: [],       // {id, type:'lift'|'run', session_id, session_name, ts, started_at, ...}
   weights: [],
@@ -4567,6 +4573,78 @@ async function disconnectWhoop() {
   toast('Whoop disconnected');
 }
 
+// v3.4.0: Oura sync + disconnect
+async function syncOura({ silent = false } = {}) {
+  if (!silent) toast('Syncing Oura…');
+  try {
+    const r = await fetch(WORKER_BASE_URL + '/oura/sync', { method: 'GET', credentials: 'include' });
+    if (r.status === 401) {
+      state.oura = state.oura || {};
+      state.oura.connected = false;
+      saveState();
+      if (!silent) toast('Oura session expired — reconnect in Settings');
+      return { ok: false, reason: 'not_connected' };
+    }
+    if (!r.ok) {
+      if (!silent) toast('Oura sync failed');
+      return { ok: false, reason: 'http_' + r.status };
+    }
+    const data = await r.json();
+    state.oura = state.oura || {};
+    state.oura.connected = true;
+    state.oura.last_synced_at = data.synced_at || new Date().toISOString();
+    state.oura.sleep = (data.sleep || []).map(s => ({
+      day: s.day,
+      duration_h: s.total_sleep_duration ? +(s.total_sleep_duration / 3600).toFixed(2) : null,
+      bedtime_start: s.bedtime_start || null,
+      bedtime_end: s.bedtime_end || null,
+      efficiency: s.efficiency || null,
+      source: 'oura',
+    })).filter(s => s.day && s.duration_h != null);
+    state.oura.readiness = (data.readiness || []).map(r2 => ({
+      day: r2.day,
+      score: typeof r2.score === 'number' ? r2.score : null,
+      hrv: r2.contributors && r2.contributors.hrv_balance != null ? r2.contributors.hrv_balance : null,
+      resting_hr: r2.contributors && r2.contributors.resting_heart_rate != null ? r2.contributors.resting_heart_rate : null,
+      source: 'oura',
+    })).filter(r2 => r2.day && r2.score != null);
+    saveState();
+    if (!silent) {
+      const n = state.oura.sleep.length + state.oura.readiness.length;
+      toast('Oura synced · ' + n + ' records');
+    }
+    render();
+    return { ok: true, data };
+  } catch (e) {
+    console.error('oura sync error:', e);
+    if (!silent) toast('Oura sync failed · check connection');
+    return { ok: false, reason: 'network' };
+  }
+}
+async function disconnectOura() {
+  try { await fetch(WORKER_BASE_URL + '/oura/disconnect', { method: 'POST', credentials: 'include' }); }
+  catch (e) { console.error('oura disconnect error:', e); }
+  state.oura = { connected: false, last_synced_at: null, sleep: [], readiness: [] };
+  saveState(); render();
+  toast('Oura disconnected');
+}
+function startOuraOAuth() {
+  const returnTo = encodeURIComponent(window.location.origin);
+  window.location.href = WORKER_BASE_URL + '/oura/auth/start?return_to=' + returnTo;
+}
+function confirmDisconnectOura() {
+  openModal(`
+    <div class="modal-title">Disconnect Oura?</div>
+    <div style="font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:var(--ink-muted);margin-bottom:18px;line-height:1.5;">
+      Cached Oura data will be cleared. You can reconnect anytime.
+    </div>
+    <div class="modal-row">
+      <button class="btn-secondary" style="flex:1" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" style="flex:1" onclick="closeModal();disconnectOura()">Disconnect</button>
+    </div>
+  `);
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // PROVIDER-AGNOSTIC SLEEP & RECOVERY HELPERS  (v3.2.3)
 // ─────────────────────────────────────────────────────────────────────
@@ -4587,29 +4665,34 @@ async function disconnectWhoop() {
 // When Oura is added: read from state.oura.sleep[] / state.oura.readiness[]
 // When Garmin is added: read from state.garmin.sleep[] / state.garmin.bodyBattery[]
 
+// v3.4.0: Oura provider helpers
+function ouraSleepHoursFor(isoDate) {
+  const rec = (state.oura && state.oura.sleep || []).find(s => s.day === isoDate);
+  return (rec && typeof rec.duration_h === 'number') ? rec.duration_h : null;
+}
+function ouraReadinessFor(isoDate) {
+  const rec = (state.oura && state.oura.readiness || []).find(r => r.day === isoDate);
+  return (rec && typeof rec.score === 'number') ? rec.score : null;
+}
+
 // sleepHoursForDate(isoDate) — canonical sleep hours for a given date.
 // Returns decimal hours (e.g. 6.5) or null if no data.
 function sleepHoursForDate(isoDate) {
-  // 1. Manual log — highest priority
   const manual = (state.sleep || []).find(s => s.date === isoDate);
   if (manual && typeof manual.duration_h === 'number') return manual.duration_h;
-  // 2. Whoop dated record
   const wh = whoopSleepHoursFor(isoDate);
   if (wh != null) return wh;
-  // 3. Oura placeholder (when state.oura is available)
-  // const oh = ouraSleepHoursFor(isoDate); if (oh != null) return oh;
-  // 4. Garmin placeholder
-  // const gh = garminSleepHoursFor(isoDate); if (gh != null) return gh;
+  const oh = ouraSleepHoursFor(isoDate);  // v3.4.0
+  if (oh != null) return oh;
   return null;
 }
 
 // recoveryScoreForDate(isoDate) — canonical recovery score (0–100) for a date.
 function recoveryScoreForDate(isoDate) {
-  // 1. Whoop recovery
   const ws = whoopRecoveryFor(isoDate);
   if (ws != null) return ws;
-  // 2. Oura readiness placeholder
-  // const os = ouraReadinessFor(isoDate); if (os != null) return os;
+  const os = ouraReadinessFor(isoDate);  // v3.4.0
+  if (os != null) return os;
   return null;
 }
 
@@ -13197,7 +13280,7 @@ function renderMe() {
   const footer = `
     <div style="height:0.5px;background:var(--line);margin:24px 0 18px;"></div>
     <div style="text-align:center;padding:8px 0 32px;">
-      <div style="font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink-muted);">Kuzuri · v3.3.9</div>
+      <div style="font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink-muted);">Kuzuri · v3.4.0</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-faint);margin-top:4px;">a record of becoming</div>
     </div>
   `;
@@ -13270,6 +13353,26 @@ function whoopSettingsTileHTML() {
       <div class="value">×</div>
     </button>
   `;
+}
+
+function ouraSettingsTileHTML() {
+  const o = state.oura || {};
+  const lastStr = o.last_synced_at ? whoopRelTime(o.last_synced_at) : null;
+  if (!o.connected) {
+    return `<button class="setting-row" onclick="startOuraOAuth()">
+      <div class="label">Oura <span style="color:var(--ink-faint);font-size:10px;font-style:italic;font-family:'Fraunces',serif;">· sleep, readiness</span></div>
+      <div class="value" style="color:var(--brass);">Connect</div>
+    </button>`;
+  }
+  return `
+    <button class="setting-row" onclick="syncOura()">
+      <div class="label">Oura</div>
+      <div class="value" style="color:var(--accent-bright);">${lastStr || 'Sync now'}</div>
+    </button>
+    <button class="setting-row" onclick="confirmDisconnectOura()">
+      <div class="label" style="color:var(--ink-muted);">Disconnect Oura</div>
+      <div class="value">×</div>
+    </button>`;
 }
 
 function whoopRelTime(iso) {
@@ -13518,6 +13621,11 @@ function openSettingsOverlay() {
 
     <div class="section-title">Connections</div>
     ${whoopSettingsTileHTML()}
+    ${ouraSettingsTileHTML()}
+    <button class="setting-row" style="opacity:0.5;cursor:default;pointer-events:none;">
+      <div class="label">Garmin <span style="color:var(--ink-faint);font-size:10px;font-style:italic;font-family:'Fraunces',serif;">· workouts, sleep</span></div>
+      <div class="value" style="color:var(--ink-faint);">Soon</div>
+    </button>
 
     <div class="section-title">Data</div>
     <button class="setting-row" onclick="exportJSON()">
@@ -16589,14 +16697,19 @@ window.kuzuriOnboarding = (() => {
       </div>
     `;
 
-    // v3.3.8: Oura → Soon (not yet built)
+    // v3.4.0: Oura live
     html += `
-      <div class="connection-card">
+      <div class="connection-card${ouraConnected ? ' connected' : ''}">
         <div class="connection-card-info">
           <div class="connection-card-name">Oura</div>
           <div class="connection-card-desc">Sleep, readiness</div>
         </div>
-        <button class="connection-card-action disabled" disabled>Soon</button>
+        ${!ouraConfigured
+          ? `<button class="connection-card-action disabled" disabled>Soon</button>`
+          : ouraConnected
+            ? `<button class="connection-card-action connected" disabled>Connected</button>`
+            : `<button class="connection-card-action primary" onclick="kuzuriOnboarding.connectOura()">Connect</button>`
+        }
       </div>
     `;
 
@@ -16701,6 +16814,12 @@ window.kuzuriOnboarding = (() => {
         state.whoop.connected = true;
         saveState();
       }
+      if (justConnectedOura) {  // v3.4.0
+        state.oura = state.oura || {};
+        state.oura.connected = true;
+        saveState();
+        syncOura({ silent: true });
+      }
       kuzuriOnboarding.renderConnectionsList();
       kuzuriAuth.showGate();
       kuzuriAuth.showView('connections');
@@ -16713,6 +16832,7 @@ window.kuzuriOnboarding = (() => {
       if (bootScreen) bootScreen.classList.add('active');
       render();
       handleWhoopReturn();
+      if (justConnectedOura) syncOura({ silent: true });  // v3.4.0
     }
     return;
   }

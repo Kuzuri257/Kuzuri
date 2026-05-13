@@ -11523,7 +11523,7 @@ function renderPulseSheet() {
   }
   // The hours number we display
   let displayedSleepH = null;
-  let sleepSource = null; // 'manual' | 'whoop' | null
+  let sleepSource = null; // 'manual' | 'whoop' | 'oura' | null
   if (todayManualSleep && typeof todayManualSleep.duration_h === 'number') {
     displayedSleepH = todayManualSleep.duration_h;
     sleepSource = 'manual';
@@ -11532,13 +11532,20 @@ function renderPulseSheet() {
     const sleepMs = Math.max(0, (stage.total_in_bed_time_milli || 0) - (stage.total_awake_time_milli || 0));
     displayedSleepH = Math.round((sleepMs / 3600000) * 10) / 10;
     sleepSource = 'whoop';
+  } else {
+    // v3.4.3: Oura daily_sleep as third fallback
+    const ouraH = ouraSleepHoursFor(td) != null ? ouraSleepHoursFor(td) : ouraSleepHoursFor(yesterdayISO);
+    if (ouraH != null) { displayedSleepH = ouraH; sleepSource = 'oura'; }
   }
 
-  // ─── Recovery data (Whoop-only)
+  // ─── Recovery data (Whoop first, Oura readiness second — v3.4.3)
   const whoopRecRec = whoopRecoveryRecordFor(td) || whoopRecoveryRecordFor(yesterdayISO);
-  const recoveryScore = whoopRecRec && whoopRecRec.score && typeof whoopRecRec.score.recovery_score === 'number'
-    ? whoopRecRec.score.recovery_score
-    : null;
+  const whoopRecScore = whoopRecRec && whoopRecRec.score && typeof whoopRecRec.score.recovery_score === 'number'
+    ? whoopRecRec.score.recovery_score : null;
+  const ouraReadinessToday = whoopRecScore == null
+    ? (ouraReadinessFor(td) != null ? ouraReadinessFor(td) : ouraReadinessFor(yesterdayISO)) : null;
+  const recoveryScore  = whoopRecScore != null ? whoopRecScore : ouraReadinessToday;
+  const recoverySource = whoopRecScore != null ? 'whoop' : (ouraReadinessToday != null ? 'oura' : null);
 
   // ─── Weight + mood (manual only)
   const todayWeight = (state.weights || []).slice().reverse().find(w => isSameDay(w.ts, td));
@@ -11556,11 +11563,18 @@ function renderPulseSheet() {
   // ─── Subtitle line: source + last sync
   const syncRel = whoopLastSyncRelative();
   const isWhoopConnected = !!(state.whoop && state.whoop.connected);
+  const isOuraConnected  = !!(state.oura  && state.oura.connected);
   let subtitle = '';
   if (isWhoopConnected && syncRel) {
     subtitle = `<div style="display:flex;align-items:center;gap:6px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--brass);margin-bottom:24px;">
       <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brass);"></span>
-      Whoop \u00b7 last synced ${escapeHtml(syncRel)}
+      Whoop · last synced ${escapeHtml(syncRel)}
+    </div>`;
+  } else if (isOuraConnected && state.oura.last_synced_at) {
+    const ouraRel = whoopRelTime(state.oura.last_synced_at);
+    subtitle = `<div style="display:flex;align-items:center;gap:6px;font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--brass);margin-bottom:24px;">
+      <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brass);"></span>
+      Oura · last synced ${escapeHtml(ouraRel)}
     </div>`;
   } else {
     subtitle = `<div style="font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink-muted);margin-bottom:24px;">Listening to what you tell it.</div>`;
@@ -11572,7 +11586,9 @@ function renderPulseSheet() {
     const stages = whoopSleepRec ? whoopSleepRec.score.stage_summary : null;
     const sourceTag = sleepSource === 'whoop'
       ? `<span style="font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:var(--brass);">via Whoop</span>`
-      : `<span style="font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:var(--ink-muted);">logged</span>`;
+      : sleepSource === 'oura'
+        ? `<span style="font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:var(--brass);">via Oura</span>`
+        : `<span style="font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:var(--ink-muted);">logged</span>`;
 
     let stageBlock = '';
     if (stages) {
@@ -11692,20 +11708,24 @@ function renderPulseSheet() {
     `;
   }
 
-  // ─── RECOVERY card (Whoop-only)
+  // ─── RECOVERY card (Whoop or Oura readiness v3.4.3)
   let recoveryCard = '';
   if (recoveryScore != null) {
     const rs = recoveryStateFor(recoveryScore);
-    const hrv = whoopRecRec && whoopRecRec.score && typeof whoopRecRec.score.hrv_rmssd_milli === 'number'
+    const whoopHrv = whoopRecRec && whoopRecRec.score && typeof whoopRecRec.score.hrv_rmssd_milli === 'number'
       ? Math.round(whoopRecRec.score.hrv_rmssd_milli) : null;
-    const rhr = whoopRecRec && whoopRecRec.score && typeof whoopRecRec.score.resting_heart_rate === 'number'
+    const whoopRhrVal = whoopRecRec && whoopRecRec.score && typeof whoopRecRec.score.resting_heart_rate === 'number'
       ? Math.round(whoopRecRec.score.resting_heart_rate) : null;
+    const ouraRecToday = recoverySource === 'oura'
+      ? ((state.oura && state.oura.readiness || []).find(r => r.day === td || r.day === yesterdayISO) || null) : null;
+    const hrv = whoopHrv != null ? whoopHrv : (ouraRecToday && typeof ouraRecToday.hrv === 'number' ? Math.round(ouraRecToday.hrv) : null);
+    const rhr = whoopRhrVal != null ? whoopRhrVal : (ouraRecToday && typeof ouraRecToday.resting_hr === 'number' ? Math.round(ouraRecToday.resting_hr) : null);
+    const recovSrc = recoverySource === 'oura' ? ' · via Oura' : '';
     const metricLine = (hrv != null || rhr != null)
-      ? `<div style="font-family:'Fraunces',serif;font-style:italic;font-size:12.5px;color:var(--ink-muted);margin-top:4px;">${[
-          hrv != null ? `HRV ${hrv}` : '',
-          rhr != null ? `resting ${rhr} bpm` : '',
-        ].filter(Boolean).join(' \u00b7 ')}</div>`
-      : '';
+      ? `<div style="font-family:'Fraunces',serif;font-style:italic;font-size:12.5px;color:var(--ink-muted);margin-top:4px;">${
+          [hrv != null ? 'HRV ' + hrv : '', rhr != null ? 'resting ' + rhr + ' bpm' : ''].filter(Boolean).join(' · ')
+        }${recovSrc}</div>`
+      : recovSrc ? `<div style="font-family:'Fraunces',serif;font-style:italic;font-size:12.5px;color:var(--brass);margin-top:4px;">via Oura</div>` : '';
     recoveryCard = `
       <div class="pulse-card">
         <div style="display:flex;align-items:center;gap:14px;">
@@ -13280,7 +13300,7 @@ function renderMe() {
   const footer = `
     <div style="height:0.5px;background:var(--line);margin:24px 0 18px;"></div>
     <div style="text-align:center;padding:8px 0 32px;">
-      <div style="font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink-muted);">Kuzuri · v3.4.0</div>
+      <div style="font-family:'Fraunces',serif;font-style:italic;font-size:13px;color:var(--ink-muted);">Kuzuri · v3.4.4</div>
       <div style="font-family:'Fraunces',serif;font-style:italic;font-size:11px;color:var(--ink-faint);margin-top:4px;">a record of becoming</div>
     </div>
   `;

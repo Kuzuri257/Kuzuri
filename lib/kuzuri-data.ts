@@ -57,6 +57,30 @@ export type WorkoutSession = {
   exercises: Exercise[];
 };
 
+export type SplitExercise = {
+  id: string;
+  name: string;
+  sets: number;
+  repRange: string;
+};
+
+export type SplitWorkout = {
+  id: string;
+  name: string;
+  focus: string;
+  lastPerformed: string;
+  estimatedMinutes: number;
+  exercises: SplitExercise[];
+};
+
+export type TrainingSplit = {
+  id: string;
+  name: string;
+  cadence: string;
+  nextWorkoutId: string;
+  workouts: SplitWorkout[];
+};
+
 export type LiftHistoryPoint = {
   date: string;
   topSet: string;
@@ -146,6 +170,10 @@ export type KuzuriState = {
     carbs: number;
     fat: number;
   };
+  splitPlan: {
+    activeSplitId: string;
+    splits: TrainingSplit[];
+  };
   todaySession: WorkoutSession;
   liftHistory: Record<string, LiftHistoryPoint[]>;
   runLogs: RunLog[];
@@ -185,6 +213,30 @@ export const initialState: KuzuriState = {
     protein: 180,
     carbs: 260,
     fat: 75
+  },
+  splitPlan: {
+    activeSplitId: "upper-lower-strength",
+    splits: [
+      {
+        id: "upper-lower-strength",
+        name: "Build your own week.",
+        cadence: "a blank week: add your first days.",
+        nextWorkoutId: "push",
+        workouts: [
+          {
+            id: "push",
+            name: "Push",
+            focus: "favorites: bench press, deadlift",
+            lastPerformed: "tap the name to rename it",
+            estimatedMinutes: 45,
+            exercises: [
+              { id: "push-bench-press", name: "Bench Press", sets: 3, repRange: "8-12" },
+              { id: "push-deadlift", name: "Deadlift", sets: 3, repRange: "8-12" }
+            ]
+          }
+        ]
+      }
+    ]
   },
   todaySession: {
     id: "session-2026-08-07",

@@ -4,8 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   Apple,
-  BookOpen,
-  CalendarDays,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -39,19 +37,73 @@ import {
   type KuzuriState,
   type MealLog,
   type OverlayId,
+  type SplitExercise,
+  type SplitWorkout,
   type TabId,
   type TrainingLocation
 } from "@/lib/kuzuri-data";
 
-const storageKey = "kuzuri_rebuild_v6";
+const storageKey = "kuzuri_rebuild_v9";
 const trainingLocations: TrainingLocation[] = ["Bahrain", "Riyadh"];
 
-const tabs: Array<{ id: TabId; label: string; icon: React.ComponentType<{ size?: number }> }> = [
-  { id: "today", label: "Today", icon: CalendarDays },
-  { id: "train", label: "Train", icon: Dumbbell },
-  { id: "fuel", label: "Fuel", icon: Utensils },
-  { id: "mind", label: "Mind", icon: BookOpen }
+const tabs: Array<{ id: TabId; label: string }> = [
+  { id: "today", label: "Today" },
+  { id: "train", label: "Train" },
+  { id: "fuel", label: "Fuel" },
+  { id: "mind", label: "Mind" }
 ];
+
+function splitExercise(name: string): SplitExercise {
+  return {
+    id: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${crypto.randomUUID()}`,
+    name,
+    sets: 3,
+    repRange: "8-12"
+  };
+}
+
+function moveItem<T>(items: T[], from: number, to: number) {
+  if (to < 0 || to >= items.length) return items;
+  const next = [...items];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+function normalizeSavedState(saved: Partial<KuzuriState>): KuzuriState {
+  const merged = { ...initialState, ...saved, selectedOverlay: null } as KuzuriState;
+  const fallbackPlan = initialState.splitPlan;
+  const plan = saved.splitPlan ?? fallbackPlan;
+
+  return {
+    ...merged,
+    splitPlan: {
+      activeSplitId: plan.activeSplitId || fallbackPlan.activeSplitId,
+      splits: (plan.splits?.length ? plan.splits : fallbackPlan.splits).map((split) => ({
+        ...split,
+        workouts: split.workouts.map((workout) => ({
+          ...workout,
+          exercises: workout.exercises.map((exercise, index) => {
+            if (typeof exercise === "string") {
+              return {
+                id: `${workout.id}-exercise-${index}`,
+                name: exercise,
+                sets: 3,
+                repRange: "8-12"
+              };
+            }
+            return {
+              ...exercise,
+              id: exercise.id || `${workout.id}-exercise-${index}`,
+              sets: exercise.sets || 3,
+              repRange: exercise.repRange || "8-12"
+            };
+          })
+        }))
+      }))
+    }
+  };
+}
 
 function toTimeValue(date: Date) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
@@ -85,7 +137,7 @@ export default function Home() {
     if (saved) {
       try {
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setState({ ...(JSON.parse(saved) as KuzuriState), selectedOverlay: null });
+        setState(normalizeSavedState(JSON.parse(saved) as Partial<KuzuriState>));
       } catch {
         window.localStorage.removeItem(storageKey);
       }
@@ -334,35 +386,29 @@ export default function Home() {
           {state.selectedTab === "mind" && <MindView state={state} setState={setState} openOverlay={openOverlay} />}
         </div>
         <nav className="nav" aria-label="Primary">
-          {tabs.slice(0, 2).map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                className={`tab-button ${state.selectedTab === tab.id ? "active" : ""}`}
-                key={tab.id}
-                onClick={() => setTab(tab.id)}
-              >
-                <Icon size={21} />
-                {tab.label}
-              </button>
-            );
-          })}
+          {tabs.slice(0, 2).map((tab) => (
+            <button
+              className={`tab-button ${state.selectedTab === tab.id ? "active" : ""}`}
+              key={tab.id}
+              onClick={() => setTab(tab.id)}
+            >
+              <span className={`tab-mark ${tab.id}`} aria-hidden="true" />
+              {tab.label}
+            </button>
+          ))}
           <button className="quick-nav-button" onClick={() => openOverlay("quick")} aria-label="Quick actions">
             <Plus size={30} strokeWidth={1.5} />
           </button>
-          {tabs.slice(2).map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                className={`tab-button ${state.selectedTab === tab.id ? "active" : ""}`}
-                key={tab.id}
-                onClick={() => setTab(tab.id)}
-              >
-                <Icon size={21} />
-                {tab.label}
-              </button>
-            );
-          })}
+          {tabs.slice(2).map((tab) => (
+            <button
+              className={`tab-button ${state.selectedTab === tab.id ? "active" : ""}`}
+              key={tab.id}
+              onClick={() => setTab(tab.id)}
+            >
+              <span className={`tab-mark ${tab.id}`} aria-hidden="true" />
+              {tab.label}
+            </button>
+          ))}
         </nav>
         {state.selectedOverlay === "pulse" && (
           <FullScreenOverlay>
@@ -405,14 +451,18 @@ export default function Home() {
             />
           </FullScreenOverlay>
         )}
-        {state.selectedOverlay && !["pulse", "session", "day"].includes(state.selectedOverlay) && (
+        {state.selectedOverlay === "builder" && (
+          <FullScreenOverlay>
+            <BuilderOverlay state={state} setState={setState} close={closeOverlay} />
+          </FullScreenOverlay>
+        )}
+        {state.selectedOverlay && !["pulse", "session", "day", "builder"].includes(state.selectedOverlay) && (
           <Overlay title={overlayTitle(state.selectedOverlay)} close={closeOverlay}>
             {state.selectedOverlay === "quick" && <QuickOverlay openOverlay={openOverlay} setState={setState} />}
             {state.selectedOverlay === "location" && (
               <LocationOverlay state={state} selectTrainingLocation={selectTrainingLocation} />
             )}
             {state.selectedOverlay === "coach" && <CoachOverlay state={state} setState={setState} />}
-            {state.selectedOverlay === "builder" && <BuilderOverlay />}
             {state.selectedOverlay === "meal" && (
               <FuelLogOverlay draft={fuelDraft} setDraft={setFuelDraft} addFuelLog={addFuelLog} />
             )}
@@ -476,12 +526,6 @@ function TodayView({
           <button className="today-avatar" onClick={() => openOverlay("me")} aria-label="Profile">S</button>
           <button className="today-sun" aria-label="Theme">☼</button>
         </div>
-      </div>
-
-      <div className="today-quote">&ldquo;Legs felt springy on the tempo.&rdquo;</div>
-      <div className="last-night">
-        <span>Last night</span>
-        <strong>7h 24m</strong>
       </div>
 
       <div className="four-label">The Four, Today</div>
@@ -570,12 +614,14 @@ function TrainView({
   trainMode: "lift" | "run";
   setTrainMode: (mode: "lift" | "run") => void;
 }) {
-  const programs = [
-    { name: "Upper I", sub: "8 exercises · bench, rows, arms", last: state.todaySession.status === "complete" ? "today" : "next up", next: true },
-    { name: "Lower I", sub: "squat pattern · posterior chain", last: "2 d ago", next: false },
-    { name: "Upper II", sub: "OHP 42.5 kg · weighted dips", last: "5 d ago", next: false },
-    { name: "Lower II", sub: "hinge · split squat · calves", last: "7 d ago", next: false }
-  ];
+  const activeSplit = state.splitPlan.splits.find((split) => split.id === state.splitPlan.activeSplitId) ?? state.splitPlan.splits[0];
+  const programs = activeSplit.workouts.map((workout) => ({
+    ...workout,
+    last: workout.id === activeSplit.nextWorkoutId
+      ? state.todaySession.status === "complete" ? "today" : "next up"
+      : workout.lastPerformed,
+    next: workout.id === activeSplit.nextWorkoutId
+  }));
   const plan = [
     { day: "FRI", title: "Intervals", detail: "6 x 400 m · 5K pace · 90s jog" },
     { day: "SAT", title: "Long run", detail: "14 km · easy · zone 2" }
@@ -601,7 +647,7 @@ function TrainView({
                 <h3>{program.name}</h3>
                 <span>{program.last}</span>
               </div>
-              <p>{program.sub}</p>
+              <p>{program.exercises.length} exercises · {program.focus}</p>
               {program.next && (
                 <button className="session-start-button" onClick={() => openOverlay("location")}>Begin session</button>
               )}
@@ -1447,16 +1493,308 @@ function CoachOverlay({
   );
 }
 
-function BuilderOverlay() {
-  return (
-    <div className="list">
-      {["Upper I", "Lower I", "Upper II", "Lower II"].map((day) => (
-        <div className="card panel" key={day}>
-          <span className="eyebrow">Program day</span>
-          <h3>{day}</h3>
-          <p className="subtle">Exercises, targets, rest, and progression rules live here.</p>
+function BuilderOverlay({
+  state,
+  setState,
+  close
+}: {
+  state: KuzuriState;
+  setState: React.Dispatch<React.SetStateAction<KuzuriState>>;
+  close: () => void;
+}) {
+  const activeSplit = state.splitPlan.splits.find((split) => split.id === state.splitPlan.activeSplitId) ?? initialState.splitPlan.splits[0];
+  const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
+  const [customExercise, setCustomExercise] = useState("");
+  const editingWorkout = activeSplit.workouts.find((workout) => workout.id === editingWorkoutId) ?? null;
+  const workoutTemplates: Array<Pick<SplitWorkout, "name" | "focus"> & { exercises: string[] }> = [
+    { name: "Push", focus: "favorites: bench press, deadlift", exercises: ["Bench Press", "Deadlift"] },
+    { name: "Pull", focus: "favorites: pullover, row", exercises: ["pullover"] },
+    { name: "Legs", focus: "favorites: hip thrust, back squat", exercises: ["Hip Thrust", "Back Squat"] },
+    { name: "Full body", focus: "whole body strength", exercises: ["Bench Press", "Back Squat"] },
+    { name: "Blank", focus: "write it yourself", exercises: [] }
+  ];
+  const exerciseChips = ["Bench Press", "Back Squat", "Deadlift", "Overhead Press", "Pull-ups", "Barbell Row", "Hip Thrust", "Lateral Raises", "Leg Press", "Romanian Deadlift"];
+
+  function updateSplit(patch: Partial<{ name: string; cadence: string }>) {
+    setState((current) => ({
+      ...current,
+      splitPlan: {
+        ...current.splitPlan,
+        splits: current.splitPlan.splits.map((split) =>
+          split.id === activeSplit.id ? { ...split, ...patch } : split
+        )
+      },
+      todaySession: patch.name ? { ...current.todaySession, program: patch.name } : current.todaySession
+    }));
+  }
+
+  function updateWorkout(workoutId: string, patch: Partial<SplitWorkout>) {
+    setState((current) => ({
+      ...current,
+      splitPlan: {
+        ...current.splitPlan,
+        splits: current.splitPlan.splits.map((split) =>
+          split.id !== activeSplit.id
+            ? split
+            : {
+                ...split,
+                workouts: split.workouts.map((workout) =>
+                  workout.id === workoutId ? { ...workout, ...patch } : workout
+                )
+              }
+        )
+      },
+      todaySession:
+        current.splitPlan.splits.find((split) => split.id === activeSplit.id)?.nextWorkoutId === workoutId && patch.name
+          ? { ...current.todaySession, title: patch.name }
+          : current.todaySession
+    }));
+  }
+
+  function reorderWorkout(workoutId: string, direction: -1 | 1) {
+    setState((current) => ({
+      ...current,
+      splitPlan: {
+        ...current.splitPlan,
+        splits: current.splitPlan.splits.map((split) => {
+          if (split.id !== activeSplit.id) return split;
+          const from = split.workouts.findIndex((workout) => workout.id === workoutId);
+          return { ...split, workouts: moveItem(split.workouts, from, from + direction) };
+        })
+      }
+    }));
+  }
+
+  function addWorkoutFromTemplate(template: Pick<SplitWorkout, "name" | "focus"> & { exercises: string[] }) {
+    const id = `${template.name.toLowerCase().replace(/\s+/g, "-")}-${crypto.randomUUID()}`;
+    setState((current) => ({
+      ...current,
+      splitPlan: {
+        ...current.splitPlan,
+        splits: current.splitPlan.splits.map((split) =>
+          split.id !== activeSplit.id
+            ? split
+            : {
+                ...split,
+                nextWorkoutId: split.nextWorkoutId || id,
+                workouts: [
+                  ...split.workouts,
+                  {
+                    id,
+                    name: template.name,
+                    focus: template.focus,
+                    lastPerformed: "tap the name to rename it",
+                    estimatedMinutes: 45,
+                    exercises: template.exercises.map(splitExercise)
+                  }
+                ]
+              }
+        )
+      }
+    }));
+    setEditingWorkoutId(id);
+  }
+
+  function clearSplit() {
+    setState((current) => ({
+      ...current,
+      splitPlan: {
+        ...current.splitPlan,
+        splits: current.splitPlan.splits.map((split) =>
+          split.id === activeSplit.id ? { ...split, nextWorkoutId: "", workouts: [] } : split
+        )
+      }
+    }));
+    setEditingWorkoutId(null);
+  }
+
+  function addExerciseToWorkout(workoutId: string, exerciseName: string) {
+    if (!exerciseName.trim()) return;
+    const name = exerciseName.trim();
+    updateWorkout(workoutId, {
+      exercises: [...(activeSplit.workouts.find((workout) => workout.id === workoutId)?.exercises ?? []), splitExercise(name)]
+    });
+  }
+
+  function updateSplitExercise(workoutId: string, exerciseId: string, patch: Partial<SplitExercise>) {
+    const workout = activeSplit.workouts.find((item) => item.id === workoutId);
+    if (!workout) return;
+    updateWorkout(workoutId, {
+      exercises: workout.exercises.map((exercise) =>
+        exercise.id === exerciseId ? { ...exercise, ...patch } : exercise
+      )
+    });
+  }
+
+  function reorderExercise(workoutId: string, exerciseIndex: number, direction: -1 | 1) {
+    const workout = activeSplit.workouts.find((item) => item.id === workoutId);
+    if (!workout) return;
+    updateWorkout(workoutId, {
+      exercises: moveItem(workout.exercises, exerciseIndex, exerciseIndex + direction)
+    });
+  }
+
+  function removeWorkout(workoutId: string) {
+    setState((current) => ({
+      ...current,
+      splitPlan: {
+        ...current.splitPlan,
+        splits: current.splitPlan.splits.map((split) => {
+          if (split.id !== activeSplit.id) return split;
+          const workouts = split.workouts.filter((workout) => workout.id !== workoutId);
+          return {
+            ...split,
+            workouts,
+            nextWorkoutId: split.nextWorkoutId === workoutId ? workouts[0]?.id ?? "" : split.nextWorkoutId
+          };
+        })
+      }
+    }));
+    setEditingWorkoutId(null);
+  }
+
+  if (editingWorkout) {
+    return (
+      <div className="split-builder-screen">
+        <div className="builder-nav-row">
+          <button onClick={() => setEditingWorkoutId(null)}>‹ Split</button>
+          <button className="builder-close" onClick={close} aria-label="Close">×</button>
         </div>
-      ))}
+        <div className="builder-edit-body">
+          <span className="builder-kicker">Edit workout</span>
+          <input
+            className="builder-title-input"
+            aria-label="Workout name"
+            value={editingWorkout.name}
+            onChange={(event) => updateWorkout(editingWorkout.id, { name: event.target.value })}
+          />
+          <div className="builder-workout-meta">
+            <span>{editingWorkout.lastPerformed}</span>
+            <span>{editingWorkout.exercises.length} exercises</span>
+            <span>{editingWorkout.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)} sets total</span>
+          </div>
+          <span className="builder-kicker lower">Exercises</span>
+          <div className="builder-exercise-rows">
+            {editingWorkout.exercises.map((exercise, index) => (
+              <div className="builder-exercise-row" key={exercise.id}>
+                <div className="builder-row-order">
+                  <button onClick={() => reorderExercise(editingWorkout.id, index, -1)} disabled={index === 0} aria-label={`Move ${exercise.name} up`}>↑</button>
+                  <button onClick={() => reorderExercise(editingWorkout.id, index, 1)} disabled={index === editingWorkout.exercises.length - 1} aria-label={`Move ${exercise.name} down`}>↓</button>
+                </div>
+                <span>{exercise.name}</span>
+                <input
+                  aria-label={`${exercise.name} sets`}
+                  inputMode="numeric"
+                  value={exercise.sets}
+                  onChange={(event) => updateSplitExercise(editingWorkout.id, exercise.id, { sets: Math.max(1, Number(event.target.value) || 1) })}
+                />
+                <input
+                  aria-label={`${exercise.name} rep range`}
+                  value={exercise.repRange}
+                  onChange={(event) => updateSplitExercise(editingWorkout.id, exercise.id, { repRange: event.target.value })}
+                />
+                <button
+                  onClick={() =>
+                    updateWorkout(editingWorkout.id, {
+                      exercises: editingWorkout.exercises.filter((item) => item.id !== exercise.id)
+                    })
+                  }
+                  aria-label={`Remove ${exercise.name}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <span className="builder-kicker lower">Add an exercise</span>
+          <div className="builder-chip-grid">
+            {exerciseChips.map((exercise) => (
+              <button key={exercise} onClick={() => addExerciseToWorkout(editingWorkout.id, exercise)}>
+                + {exercise}
+              </button>
+            ))}
+          </div>
+          <div className="builder-custom-add">
+            <input
+              aria-label="Custom exercise"
+              placeholder="Or type your own -- e.g. Nordic"
+              value={customExercise}
+              onChange={(event) => setCustomExercise(event.target.value)}
+            />
+            <button
+              onClick={() => {
+                addExerciseToWorkout(editingWorkout.id, customExercise);
+                setCustomExercise("");
+              }}
+              aria-label="Add custom exercise"
+            >
+              +
+            </button>
+          </div>
+          <p className="builder-footnote">Weights and reps carry over from your last time on each lift.</p>
+          <div className="builder-bottom-actions">
+            <button onClick={() => setEditingWorkoutId(null)}>Done</button>
+            <button onClick={() => removeWorkout(editingWorkout.id)}>Remove workout</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="split-builder-screen">
+      <div className="builder-nav-row">
+        <button onClick={close}>‹ Train</button>
+        <button className="builder-close" onClick={close} aria-label="Close">×</button>
+      </div>
+      <div className="builder-edit-body">
+        <span className="builder-kicker">Your split</span>
+        <input
+          className="builder-title-input"
+          aria-label="Split name"
+          value={activeSplit.name}
+          onChange={(event) => updateSplit({ name: event.target.value })}
+        />
+        <textarea
+          className="builder-subtitle-input"
+          aria-label="Split description"
+          value={activeSplit.cadence}
+          onChange={(event) => updateSplit({ cadence: event.target.value })}
+        />
+        {activeSplit.workouts.length > 0 && (
+          <div className="builder-day-cards">
+            {activeSplit.workouts.map((workout, index) => (
+              <div className="builder-day-card" key={workout.id}>
+                <button className="builder-day-main" onClick={() => setEditingWorkoutId(workout.id)}>
+                  <div>
+                    <strong>{workout.name}</strong>
+                    <span>{workout.focus}</span>
+                  </div>
+                  <em>edit</em>
+                </button>
+                <div className="builder-day-order">
+                  <button onClick={() => reorderWorkout(workout.id, -1)} disabled={index === 0} aria-label={`Move ${workout.name} earlier`}>↑</button>
+                  <button onClick={() => reorderWorkout(workout.id, 1)} disabled={index === activeSplit.workouts.length - 1} aria-label={`Move ${workout.name} later`}>↓</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <span className="builder-kicker lower">Add a day</span>
+        <div className="builder-chip-grid compact">
+          {workoutTemplates.map((template) => (
+            <button key={template.name} onClick={() => addWorkoutFromTemplate(template)}>
+              + {template.name}
+            </button>
+          ))}
+        </div>
+        <p className="builder-footnote">The coach will draft a new day with exercises -- for your split.</p>
+        <button className="builder-scratch-card" onClick={clearSplit}>
+          <strong>Start from scratch</strong>
+          <span>clear the week, keep the history -- then build your own</span>
+        </button>
+        <button className="builder-done-wide" onClick={close}>Done</button>
+      </div>
     </div>
   );
 }

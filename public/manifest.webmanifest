@@ -1,0 +1,10 @@
+{
+  "name": "Kuzuri",
+  "short_name": "Kuzuri",
+  "description": "Training, recovery, fuel, learning, and life review in one place.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F1ECDF",
+  "theme_color": "#F1ECDF",
+  "icons": []
+}

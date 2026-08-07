@@ -28,6 +28,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { getSupabaseClient } from "@/lib/supabase-client";
 import {
   calculateTotals,
   domains,
@@ -123,6 +124,10 @@ function formatFuelLogTime(loggedAt?: string) {
 
 export default function Home() {
   const [state, setState] = useState<KuzuriState>(initialState);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+  const [syncStatus, setSyncStatus] = useState<"loading" | "signed-out" | "local" | "saving" | "synced" | "error">("loading");
   const [expandedExercise, setExpandedExercise] = useState("seated-hamstring-curls");
   const [expandedSetId, setExpandedSetId] = useState("");
   const [prepExpanded, setPrepExpanded] = useState(true);
@@ -131,26 +136,129 @@ export default function Home() {
   const [restSeconds, setRestSeconds] = useState(0);
   const [restPaused, setRestPaused] = useState(false);
   const didLoadStorage = useRef(false);
+  const syncTimer = useRef<number | null>(null);
+  const supabase = useMemo(() => getSupabaseClient(), []);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(storageKey);
-    if (saved) {
+    let cancelled = false;
+
+    function loadLocalState() {
+      const saved = window.localStorage.getItem(storageKey);
+      if (!saved) return;
       try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setState(normalizeSavedState(JSON.parse(saved) as Partial<KuzuriState>));
       } catch {
         window.localStorage.removeItem(storageKey);
       }
     }
-  }, []);
+
+    async function loadCloudState(userId: string) {
+      if (!supabase) return false;
+      const { data, error } = await supabase
+        .from("kuzuri_states")
+        .select("state")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (cancelled) return false;
+      if (error) {
+        setSyncStatus("error");
+        return false;
+      }
+      if (data?.state) {
+        setState(normalizeSavedState(data.state as Partial<KuzuriState>));
+        return true;
+      }
+      return false;
+    }
+
+    async function boot() {
+      if (!supabase) {
+        loadLocalState();
+        setSyncStatus("local");
+        return;
+      }
+
+      setSyncStatus("loading");
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      const userId = data.session?.user.id ?? null;
+      setSessionUserId(userId);
+
+      if (userId) {
+        const loadedCloud = await loadCloudState(userId);
+        if (!loadedCloud) loadLocalState();
+        if (!cancelled) setSyncStatus("synced");
+      } else {
+        loadLocalState();
+        setSyncStatus("signed-out");
+      }
+    }
+
+    void boot();
+
+    const authListener = supabase?.auth.onAuthStateChange((_event, session) => {
+      const userId = session?.user.id ?? null;
+      setSessionUserId(userId);
+      if (!userId) {
+        setSyncStatus("signed-out");
+        return;
+      }
+      setSyncStatus("loading");
+      void loadCloudState(userId).then((loadedCloud) => {
+        if (!loadedCloud) {
+          setSyncStatus("saving");
+        } else {
+          setSyncStatus("synced");
+        }
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      authListener?.data.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   useEffect(() => {
     if (!didLoadStorage.current) {
       didLoadStorage.current = true;
       return;
     }
-    window.localStorage.setItem(storageKey, JSON.stringify(state));
-  }, [state]);
+    const persistableState: KuzuriState = { ...state, selectedOverlay: null };
+    window.localStorage.setItem(storageKey, JSON.stringify(persistableState));
+
+    if (!supabase || !sessionUserId) return;
+    if (syncTimer.current) window.clearTimeout(syncTimer.current);
+    syncTimer.current = window.setTimeout(() => {
+      setSyncStatus("saving");
+      void supabase
+        .from("kuzuri_states")
+        .upsert({
+          user_id: sessionUserId,
+          state: persistableState,
+          updated_at: new Date().toISOString()
+        })
+        .then(({ error }) => setSyncStatus(error ? "error" : "synced"));
+    }, 650);
+  }, [sessionUserId, state, supabase]);
+
+  async function requestMagicLink() {
+    if (!supabase || !authEmail.trim()) return;
+    setAuthMessage("Sending secure link...");
+    const { error } = await supabase.auth.signInWithOtp({
+      email: authEmail.trim(),
+      options: { emailRedirectTo: window.location.origin }
+    });
+    setAuthMessage(error ? error.message : "Check your email for the Kuzuri sign-in link.");
+  }
+
+  async function signOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    setSessionUserId(null);
+    setSyncStatus("signed-out");
+  }
 
   useEffect(() => {
     if (!state.learningTimerRunning) return;
@@ -357,6 +465,18 @@ export default function Home() {
   return (
     <main className="app-shell">
       <section className="device">
+        {supabase && !sessionUserId && (
+          <AuthGate
+            email={authEmail}
+            message={authMessage}
+            loading={syncStatus === "loading"}
+            setEmail={setAuthEmail}
+            requestMagicLink={requestMagicLink}
+          />
+        )}
+        {supabase && sessionUserId && (
+          <SyncBadge status={syncStatus} signOut={signOut} />
+        )}
         <div className="main-scroll">
           {state.selectedTab === "today" && (
             <TodayView
@@ -491,6 +611,64 @@ function Topbar({ openOverlay }: { openOverlay: (overlay: OverlayId) => void }) 
           A
         </button>
       </div>
+    </div>
+  );
+}
+
+function AuthGate({
+  email,
+  message,
+  loading,
+  setEmail,
+  requestMagicLink
+}: {
+  email: string;
+  message: string;
+  loading: boolean;
+  setEmail: (email: string) => void;
+  requestMagicLink: () => void;
+}) {
+  return (
+    <div className="auth-gate">
+      <div className="auth-card">
+        <span className="builder-kicker">Kuzuri</span>
+        <h2>Your source of truth.</h2>
+        <p>Sign in to save workouts, splits, fuel, learning, and weekly history to Supabase.</p>
+        <input
+          type="email"
+          inputMode="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+        <button onClick={requestMagicLink} disabled={loading || !email.trim()}>
+          {loading ? "Checking..." : "Send sign-in link"}
+        </button>
+        {message && <em>{message}</em>}
+      </div>
+    </div>
+  );
+}
+
+function SyncBadge({
+  status,
+  signOut
+}: {
+  status: "loading" | "signed-out" | "local" | "saving" | "synced" | "error";
+  signOut: () => void;
+}) {
+  const labels = {
+    loading: "loading",
+    "signed-out": "signed out",
+    local: "local",
+    saving: "saving",
+    synced: "synced",
+    error: "sync issue"
+  };
+  return (
+    <div className={`sync-badge ${status}`}>
+      <span>{labels[status]}</span>
+      <button onClick={signOut}>Sign out</button>
     </div>
   );
 }
